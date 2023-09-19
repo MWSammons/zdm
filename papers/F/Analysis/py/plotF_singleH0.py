@@ -1,15 +1,9 @@
 """
-This is a script to produce limit plots for a cube.
-
-The plots produced with priors on H0 are stored in folders prefixed with "wH0".
-Plots generated with the synthetic CRACO cube are suffixed with "_forecast", while 
-plots generated with the real observation cube are suffixed with "_measured".
-Plots showing PDFs with and without priors are infixed with "others".
+This is a script to produce an F forecast
+for a single value of H0
 
 - The priors on H0 are:
-    a) Planck
-    b) Reiss
-    c) No prior
+    Planck
 
 """
 
@@ -19,6 +13,8 @@ import zdm
 from zdm import analyze_cube as ac
 
 from matplotlib import pyplot as plt
+
+from IPython import embed
 
 
 def main(cube_path, outdir="./", verbose=False):
@@ -41,22 +37,8 @@ def main(cube_path, outdir="./", verbose=False):
     # gets latex names
     uvals, latexnames = get_names_values(data)
 
-    ################ single plots, no priors ############
+    # Analyssi
     deprecated, uw_vectors, wvectors = ac.get_bayesian_data(data["ll"])
-    ac.do_single_plots(
-        uvals,
-        uw_vectors,
-        None,
-        data["params"],
-        tag="",
-        log=False,
-        logspline=False,
-        # kind="linear",
-        truth=None,
-        dolevels=True,
-        latexnames=latexnames,
-        outdir=outdir,
-    )
 
     ########### H0 data for fixed values of other parameters ###########
     # extracts best-fit values
@@ -102,80 +84,28 @@ def main(cube_path, outdir="./", verbose=False):
         data["ll"], H0_dim, data["H0"], Planck_H0, Planck_sigma, Reiss_H0, Reiss_sigma
     )
     deprecated, wH0_vectors, wvectors = ac.get_bayesian_data(wlls)
-    ac.do_single_plots(
-        uvals,
-        wH0_vectors,
-        None,
-        data["params"],
-        tag="wH0_",
-        truth=None,
-        dolevels=True,
-        latexnames=latexnames,
-        logspline=False,
-        outdir=outdir,
-    )
 
-    # now do this with others...
-    # builds others...
-    others = []
-    for i, p in enumerate(data["params"]):
-        if i == iH0:
-            oset = None
-            others.append(oset)
-        else:
-            if i < iH0:
-                modi = i
-            else:
-                modi = i - 1
-            oset = [uw_vectors[i], ReissH0_vectors[modi], PlanckH0_vectors[modi]]
-            others.append(oset)
+    # Cut down to just F
+    params = np.array(['logF'])
+    uvals = [uvals[-1]]
+    PlanckH0_vectors = [PlanckH0_vectors[-1]]
+    latexnames = [latexnames[-1]]
 
     # generates plots for our standard prior on H0, Planck and SN1a values, and no prior also
     ac.do_single_plots(
         uvals,
-        wH0_vectors,
+        PlanckH0_vectors,
         None,
-        data["params"],
-        tag="wH0_others_",
+        params,
+        tag="wH0_Planck_",
         truth=None,
         dolevels=True,
         latexnames=latexnames,
         logspline=False,
-        others=others,
-        others_labels=["No Prior", r"$H_0 = 73.04$", r"$H_0 = 67.4$"],
+        main_label=r"$H_0 = 73.04$",
         outdir=outdir,
     )
 
-    # Generate for a single H0 value
-
-    # ############## 2D plots for total likelihood ###########
-    # # these are for nor priors on anything
-    # baduvals, ijs, arrays, warrays = ac.get_2D_bayesian_data(data["ll"])
-    # for which, array in enumerate(arrays):
-    #     i = ijs[which][0]
-    #     j = ijs[which][1]
-
-    #     savename = "2D/lls_" + data["params"][i] + "_" + data["params"][j] + ".png"
-    #     ac.make_2d_plot(
-    #         array, latexnames[i], latexnames[j], uvals[i], uvals[j], savename=savename
-    #     )
-    #     # ac.make_2d_plot(array,latexnames[i],latexnames[j],
-    #     #    param_vals[i],param_vals[j],
-    #     #    savename=savename)
-    #     if False and data["params"][i] == "H0":
-    #         savename = (
-    #             "normed2D/lls_" + data["params"][j] + "_" + data["params"][i] + ".png"
-    #         )
-
-    #         ac.make_2d_plot(
-    #             array.T,
-    #             latexnames[j],
-    #             latexnames[i],
-    #             uvals[j],
-    #             uvals[i],
-    #             savename=savename,
-    #             norm=1,
-            # )
 
 
 def get_names_values(data):
@@ -234,5 +164,4 @@ def get_param_values(data, verbose=False):
     return param_vals
 
 # Real Cube Data
-main("../Real/Cubes/craco_real_cube.npz", "measured/")
 main("../CRACO/Cubes/craco_full_cube.npz", "forecast/")

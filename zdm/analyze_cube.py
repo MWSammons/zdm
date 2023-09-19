@@ -889,10 +889,11 @@ def extract_limits(x,y,p,method=1):
         v1=x[ik2]
     return v0,v1,ik1,ik2
 
-def do_single_plots(uvals,vectors,wvectors,names,tag=None, fig_exten='.png',
+def do_single_plots(uvals,vectors,wvectors,names,tag:str=None, fig_exten='.png',
                     dolevels=False,log=True,outdir='SingleFigs/',
                     vparams_dict=None, prefix='',truth=None,latexnames=None,
-                    units=None,logspline=True, others=None, compact=False, others_labels=None):
+                    units=None,logspline=True, others=None, compact=False, others_labels=None,
+                    main_label:str='Uniform'):
     """ Generate a series of 1D plots of the cube parameters
 
     Args:
@@ -906,7 +907,7 @@ def do_single_plots(uvals,vectors,wvectors,names,tag=None, fig_exten='.png',
             a weighted (with prior) vector giving
             1D probabilities for that value of the parameter]
         names ([type]): [description]
-        tag ([type], optional): [description]. Defaults to None.
+        tag (str, optional): If provided, pre-pends outdir. Defaults to None.
         fig_exten (str, optional): [description]. Defaults to '.png'.
         dolevels (bool, optional): [description]. Defaults to False.
         log (bool, optional): [description]. Defaults to True.
@@ -917,6 +918,7 @@ def do_single_plots(uvals,vectors,wvectors,names,tag=None, fig_exten='.png',
         units: latex of units to attach to x-axis only
         logspline(bool): do spline fitting in logspace?
         others(list of arrays): list of other plots to add to data
+        main_label(str): label for main curve
 
     """
 
@@ -978,7 +980,7 @@ def do_single_plots(uvals,vectors,wvectors,names,tag=None, fig_exten='.png',
         norm = np.abs(norm)
         y /= norm
         vectors[i][temp] /= norm
-        plt.plot(x, y, label="Uniform", color="blue", linewidth=lw, linestyle="-")
+        plt.plot(x, y, label=main_label, color="blue", linewidth=lw, linestyle="-")
         if compact:
             plt.plot(vals[temp], vectors[i][temp], color="blue", linestyle="", marker="s", ms=5)
         else:
@@ -1293,6 +1295,7 @@ def do_single_plots(uvals,vectors,wvectors,names,tag=None, fig_exten='.png',
 
         plt.tight_layout()
         plt.savefig(os.path.join(outdir, prefix + names[i] + fig_exten), dpi=300)
+        print(f'Wrote: {os.path.join(outdir, prefix + names[i] + fig_exten)}')
         plt.close()
     if log:
         logfile.close()
