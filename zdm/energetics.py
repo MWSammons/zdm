@@ -10,43 +10,20 @@ igamma_linear_log10 = {}
 SplineMin = -6
 SplineMax = 6
 NSpline = 1000
-SplineLog = True
 
 ############## this section defines different luminosity functions ##########
 
-def init_igamma_splines(gammas, reinit=False,k=3):
-    """
-    gammas [list of floats]: list of values of gamma at which splines
-        must be created
-    reinit [bool]: if True, will re-initialise even if a spline for
-        that gamma has already been created
-    k [int]: degree of spline to use. 3 by default (cubic splines).
-        Formal range: integers 1 <= k <= 5. Do NOT use 2 or 4.
-    
-    If SplineLog is set, interpolations are performed in log-space,
-        i.e. the results is a spline interpolation of the log10 of the
-        answer in terms of the log10 of the input
-    """
-    global SplineMin,SplineMax,NSpline,SplineLog
+def init_igamma_splines(gammas, reinit=False):
+    global SplineMin,SplineMax,NSpline
     for gamma in gammas:
         if gamma not in igamma_splines.keys() or reinit:
             print(f"Initializing igamma_spline for gamma={gamma}")
-            lavals = np.linspace(SplineMin, SplineMax, NSpline)
-            avals = 10**lavals
+            avals = 10**np.linspace(SplineMin, SplineMax, NSpline)
             numer = np.array([float(mpmath.gammainc(
                 gamma, a=iEE)) for iEE in avals])
-            if SplineLog:
-                # check for literal zeros, set them to small values
-                zero = np.where(numer == 0.)[0]
-                ismall = zero[0]-1
-                smallest = numer[ismall]
-                numer[zero] = smallest
-                lnumer = np.log10(numer)
-                igamma_splines[gamma] = interpolate.splrep(lavals, lnumer,k=k)
-            else:
-                igamma_splines[gamma] = interpolate.splrep(avals, numer,k=k)
-            
-  
+            # iGamma
+            igamma_splines[gamma] = interpolate.splrep(avals, numer,k=3)
+
 def init_igamma_linear(gammas:list, reinit:bool=False, 
                        log:bool=False):
     """ Setup the linear interpolator for gamma
@@ -185,7 +162,7 @@ def vector_diff_power_law(Eth,*params):
     
     low=np.where(Eth < Emin)[0]
     if len(low) > 0:
-        result[low]=1.  # This was 0 and I think it was wrong -- JXP
+        result[low]=0.  
     high=np.where(Eth > Emax)[0]
     if len(high) > 0:
         result[high]=0.
@@ -226,8 +203,6 @@ def vector_cum_gamma_spline(Eth:np.ndarray, *params):
     Returns:
         np.ndarray: [description]
     """
-    global SplineLog
-    
     params=np.array(params)
     Emin=params[0]
     Emax=params[1]
@@ -238,10 +213,7 @@ def vector_cum_gamma_spline(Eth:np.ndarray, *params):
     Eth_Emax = Eth/Emax
     if gamma not in igamma_splines.keys():
         init_igamma_splines([gamma])
-    if SplineLog:
-        numer = 10**interpolate.splev(np.log10(Eth_Emax), igamma_splines[gamma])
-    else:
-        numer = interpolate.splev(Eth_Emax, igamma_splines[gamma])
+    numer = interpolate.splev(Eth_Emax, igamma_splines[gamma])
     result=numer/norm
 
     # Low end
@@ -346,6 +318,62 @@ def vector_diff_gamma(Eth,*params):
     result= (Eth/Emax)**(gamma-1) * np.exp(-Eth/Emax) / norm
     
     low= Eth < Emin
-    result[low]=1.  # This was 0 and I think it was wrong
-    
+    result[low]=0.
+    return result
+
+########### lensing modified #######
+#def lensingPDF(mu):
+#    return 2*mu**-3
+
+def lensingPDF(mu):
+    x = np.load('mus.npy')
+    y = np.load('pmus.npy')
+    interpFunc = interpolate.interp1d(x,y, bounds_error=False, fill_value=0)
+    return interpFunc(np.log10(mu))
+
+def vector_cum_lensed_power_law(Eth,*params):
+    """ Calculates the fraction of bursts above a certain power law
+    for a given Eth.
+    """
+    params=np.array(params)
+    Emin=params[0]
+    Emax=params[1]
+    gamma=params[2]
+    print(Eth, Emin, Emax, gamma)
+    logEn = np.log(Emin)
+    logEx = np.log(Emax)
+    logSpacing = 0.01
+    logERange = np.arange(logEn, logEx+logSpacing, logSpacing)
+    muNum = int(10/logSpacing)+1
+    #print(muNum)
+    logMu = np.arange(0, muNum*logSpacing, logSpacing)
+    #print(len(logERange), len(logMu))
+    probGrid = lensingPDF(np.e**logMu)
+    phiGrid = vector_diff_power_law(np.e**logERange, *params)
+    phiL = np.convolve(probGrid, phiGrid)*logSpacing
+    logE_muRange = np.arange(logEn, np.amax(logERange)+np.amax(logMu),logSpacing)
+    #print(np.amin(np.e**logE_muRange), np.amax(np.e**logE_muRange))
+    phiLCumConv = np.cumsum(np.flip((np.e**logE_muRange)*phiL*logSpacing))
+    interpFunc = interpolate.interp1d(np.flip(np.e**logE_muRange), phiLCumConv, bounds_error=False, fill_value=(1.0,0.0))
+    #iprint(interpFunc(1e31),interpFunc(1e32))
+    result = interpFunc(Eth)
+
+    return result
+
+
+
+def array_cum_lensed_power_law(Eth,*params):
+    """ Calculates the fraction of bursts above a certain power law
+    for a given Eth, where Eth is an N-dimensional array
+    """
+    dims=Eth.shape
+    Eth=Eth.flatten()
+    #if gamma >= 0: #handles crazy dodgy cases. Or just return 0?
+    #    result=np.zeros([Eth.size])
+    #    result[np.where(Eth < Emax)]=1.
+    #    result=result.reshape(dims)
+    #    Eth=Eth.reshape(dims)
+    #    return result
+    result=vector_cum_lensed_power_law(Eth,*params)
+    result=result.reshape(dims)
     return result

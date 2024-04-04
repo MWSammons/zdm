@@ -81,6 +81,7 @@ class Grid:
 
     def init_luminosity_functions(self):
         """ Set the luminsoity function for FRB energetics """
+        print('----------***************----------', self.luminosity_function)
         if self.luminosity_function == 0:  # Power-law
             self.array_cum_lf = energetics.array_cum_power_law
             self.vector_cum_lf = energetics.vector_cum_power_law
@@ -102,6 +103,11 @@ class Grid:
             self.vector_cum_lf = energetics.vector_cum_gamma_linear
             self.array_diff_lf = energetics.array_diff_gamma
             self.vector_diff_lf = energetics.vector_diff_gamma
+        elif self.luminosity_function == 4:  # Lensed power-law
+            self.array_cum_lf = energetics.array_cum_lensed_power_law
+            self.vector_cum_lf = energetics.vector_cum_lensed_power_law
+            #self.array_diff_lf = energetics.array_diff_power_law
+            #self.vector_diff_lf = energetics.vector_diff_power_law
         else:
             raise ValueError(
                 "Luminosity function must be 0, not ", self.luminosity_function
@@ -299,12 +305,17 @@ class Grid:
                             thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
                         )
                     )
+                    print(i,j,Emin,Emax)
+                    np.save('thresh'+str(i)+str(j),thresh)
+
 
         # here, b-fractions are unweighted according to the value of b.
         self.fractions = np.sum(
             self.b_fractions, axis=2
         )  # sums over b-axis [ we could ignore this step?]
+        np.save('selffractionsLens', self.fractions)
         self.pdv = np.multiply(self.fractions.T, self.dV).T
+        print(np.sum(self.pdv),'+++++++')
 
     def calc_rates(self):
         """ multiplies the rate per cell with the appropriate pdm plot """
@@ -328,7 +339,6 @@ class Grid:
             exit()
 
         self.sfr_smear = np.multiply(self.smear_grid.T, self.sfr).T
-
         self.rates = self.pdv * self.sfr_smear
 
     def calc_thresholds(self, F0:float, 
