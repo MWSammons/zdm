@@ -53,7 +53,7 @@ def main():
     state.host.lsigma = 0.57
     state.host.lmean = 2.22
     state.FRBdemo.lC = 4.86
-#    state.energy.luminosity_function=4
+    state.energy.luminosity_function=4
     
     
     s,g = loading.survey_and_grid(survey_name=name,
@@ -63,7 +63,9 @@ def main():
     
     FRB_rate_per_day = np.sum(g.rates) * 10**g.state.FRBdemo.lC
     print("Rate of FRBs per day is ",FRB_rate_per_day)
-    
+    FRB_rate_per_day = np.sum(g.rates[g.zvals>1.0,:]) * 10**g.state.FRBdemo.lC
+    print("Rate of FRBs per day with z > 1.0 is ",FRB_rate_per_day)
+ 
     misc_functions.plot_grid_2(
             g.rates,
             g.zvals,
