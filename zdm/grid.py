@@ -264,7 +264,7 @@ class Grid:
         # For convenience and speed up
         Emin = 10 ** self.state.energy.lEmin
         Emax = 10 ** self.state.energy.lEmax
-
+        #print(self.zvals)
         # this implementation allows us to access the b-fractions later on
         if (not (self.b_fractions is not None)) or (beam_b is not None):
             self.b_fractions = np.zeros(
@@ -290,22 +290,43 @@ class Grid:
                     thresh = self.thresholds[j, :, :] / b
 
                 if j == 0:
-                    self.b_fractions[:, :, i] = (
-                        self.beam_o[i]
-                        * w
-                        * self.array_cum_lf(
-                            thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
+                    if self.luminosity_function == 4:
+                        print('we are doing the lensing!') 
+                        self.b_fractions[:, :, i] = (
+                            self.beam_o[i]
+                            * w
+                            * self.array_cum_lf(
+                                thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
+                                self.zvals, i
+                            )
                         )
-                    )
+                    else:
+                        self.b_fractions[:, :, i] = (
+                            self.beam_o[i]
+                            * w
+                            * self.array_cum_lf(
+                                thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
+                            )
+                        )
                 else:
-                    self.b_fractions[:, :, i] += (
-                        self.beam_o[i]
-                        * w
-                        * self.array_cum_lf(
-                            thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
+                    if self.luminosity_function == 4:
+                        print('we are doing the lensing!') 
+                        self.b_fractions[:, :, i] += (
+                            self.beam_o[i]
+                            * w
+                            * self.array_cum_lf(
+                                thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
+                                self.zvals, i
+                            )
                         )
+                    else:
+                        self.b_fractions[:, :, i] += (
+                            self.beam_o[i]
+                            * w
+                            * self.array_cum_lf(
+                                thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
+                            )
                     )
-                    print(i,j,Emin,Emax)
                     np.save('thresh'+str(i)+str(j),thresh)
 
 

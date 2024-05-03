@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import interpolate
 import mpmath
+from astropy.cosmology import Planck18 as cosmo
 
 from IPython import embed
 
@@ -106,7 +107,7 @@ def vector_cum_power_law(Eth,*params):
     """ Calculates the fraction of bursts above a certain power law
     for a given Eth.
     """
-    params=np.array(params)
+    #params=np.array(params)
     Emin=params[0]
     Emax=params[1]
     gamma=params[2]
@@ -325,38 +326,65 @@ def vector_diff_gamma(Eth,*params):
 #def lensingPDF(mu):
 #    return 2*mu**-3
 
-def lensingPDF(mu):
+def distanceFraction(zD, zS):
+    Dds = cosmo.angular_diameter_distance_z1z2(zD,zS)
+    Ds = cosmo.angular_diameter_distance(zS)
+    return Dds/Ds
+
+def redshiftScaling(zD,zS,zMap):
+    coefficient = distanceFraction(zD,zS)/distanceFraction(zD,zMap)
+    return coefficient
+
+def lensingPDF(mu, zD, zS, beami):
     x = np.load('mus.npy')
-    y = np.load('pmus.npy')
-    interpFunc = interpolate.interp1d(x,y, bounds_error=False, fill_value=0)
+    yFull = np.load('pmus.npy')
+    if np.sum(np.isnan(yFull[:,beami]))==len(yFull[:,beami]):
+        return np.ones(len(mu))*np.nan
+    zMap = 1
+    y = yFull[:,beami]
+    zCoefficient = redshiftScaling(zD,zS,zMap)
+    xScaled = x+np.log10(zCoefficient)
+    yScaled = y/zCoefficient
+    interpFunc = interpolate.interp1d(xScaled,yScaled, bounds_error=False, fill_value=0)
     return interpFunc(np.log10(mu))
 
 def vector_cum_lensed_power_law(Eth,*params):
     """ Calculates the fraction of bursts above a certain power law
     for a given Eth.
     """
-    params=np.array(params)
+    #params=np.array(params)
     Emin=params[0]
     Emax=params[1]
     gamma=params[2]
-    print(Eth, Emin, Emax, gamma)
+    zvals=params[4]
+    beami = params[5]
+    zD = 0.545
+    #print(Eth, Emin, Emax, gamma)
     logEn = np.log(Emin)
     logEx = np.log(Emax)
     logSpacing = 0.01
     logERange = np.arange(logEn, logEx+logSpacing, logSpacing)
-    muNum = int(10/logSpacing)+1
+    muNum = int((10+2)/logSpacing)+1
     #print(muNum)
-    logMu = np.arange(0, muNum*logSpacing, logSpacing)
+    logMu = np.arange(-2, muNum*logSpacing, logSpacing)
     #print(len(logERange), len(logMu))
-    probGrid = lensingPDF(np.e**logMu)
-    phiGrid = vector_diff_power_law(np.e**logERange, *params)
-    phiL = np.convolve(probGrid, phiGrid)*logSpacing
-    logE_muRange = np.arange(logEn, np.amax(logERange)+np.amax(logMu),logSpacing)
-    #print(np.amin(np.e**logE_muRange), np.amax(np.e**logE_muRange))
-    phiLCumConv = np.cumsum(np.flip((np.e**logE_muRange)*phiL*logSpacing))
-    interpFunc = interpolate.interp1d(np.flip(np.e**logE_muRange), phiLCumConv, bounds_error=False, fill_value=(1.0,0.0))
-    #iprint(interpFunc(1e31),interpFunc(1e32))
-    result = interpFunc(Eth)
+    result = np.zeros(Eth.shape)
+    for i in range(len(zvals)):
+        if zD < zvals[i]:
+            probGrid = lensingPDF(np.e**logMu, zD, zvals[i], beami)
+            if np.sum(np.isnan(probGrid))==len(probGrid):
+                result[i,:]=vector_cum_power_law(Eth[i,:],*params)
+            else:
+                phiGrid = vector_diff_power_law(np.e**logERange, *params)
+                phiL = np.convolve(probGrid, phiGrid)*logSpacing
+                logE_muRange = np.arange(logEn-2, np.amax(logERange)+np.amax(logMu),logSpacing)
+                #print(np.amin(np.e**logE_muRange), np.amax(np.e**logE_muRange))
+                phiLCumConv = np.cumsum(np.flip((np.e**logE_muRange)*phiL*logSpacing))
+                interpFunc = interpolate.interp1d(np.flip(np.e**logE_muRange), phiLCumConv, bounds_error=False, fill_value=(1.0,0.0))
+                #iprint(interpFunc(1e31),interpFunc(1e32))
+                result[i,:] = interpFunc(Eth[i,:])
+        else:
+            result[i,:]=vector_cum_power_law(Eth[i,:],*params)
 
     return result
 
@@ -367,7 +395,6 @@ def array_cum_lensed_power_law(Eth,*params):
     for a given Eth, where Eth is an N-dimensional array
     """
     dims=Eth.shape
-    Eth=Eth.flatten()
     #if gamma >= 0: #handles crazy dodgy cases. Or just return 0?
     #    result=np.zeros([Eth.size])
     #    result[np.where(Eth < Emax)]=1.
@@ -375,5 +402,4 @@ def array_cum_lensed_power_law(Eth,*params):
     #    Eth=Eth.reshape(dims)
     #    return result
     result=vector_cum_lensed_power_law(Eth,*params)
-    result=result.reshape(dims)
     return result
