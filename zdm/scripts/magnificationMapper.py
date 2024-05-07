@@ -105,7 +105,7 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
     for i in range(len(log10b)):
         gainLevel = np.abs(np.log10(bGains)-log10b[i])<np.abs(dlog10b/2)
         tower[gainLevel] = i
-    plt.imshow(tower, extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='Set3')
+    plt.imshow(tower, extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
     ax.imshow(np.log10(magni).T, aspect='auto', extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], alpha=0.7)
     ax.imshow(bGains, alpha=0.5,extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='Greys')
         
@@ -113,7 +113,7 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
     plt.ylabel(r'Dec')
     overlay = ax.get_coords_overlay('icrs')
     overlay.grid(color='white', ls='dotted')
-    fig.savefig(str(name)+'beamPos.pdf')
+    fig.savefig(str(name))
     pmus = np.zeros([len(muThresh),len(log10b)])
     probMags = np.log10(muThresh[:-1])
     for i in range(len(log10b)):

@@ -323,8 +323,6 @@ def vector_diff_gamma(Eth,*params):
     return result
 
 ########### lensing modified #######
-#def lensingPDF(mu):
-#    return 2*mu**-3
 
 def distanceFraction(zD, zS):
     Dds = cosmo.angular_diameter_distance_z1z2(zD,zS)
@@ -335,9 +333,9 @@ def redshiftScaling(zD,zS,zMap):
     coefficient = distanceFraction(zD,zS)/distanceFraction(zD,zMap)
     return coefficient
 
-def lensingPDF(mu, zD, zS, beami):
-    x = np.load('mus.npy')
-    yFull = np.load('pmus.npy')
+def lensingPDF(mu, zD, zS, beami, surveyName):
+    x = np.load(str(surveyName)+'mus.npy')
+    yFull = np.load(str(surveyName)+'pmus.npy')
     if np.sum(np.isnan(yFull[:,beami]))==len(yFull[:,beami]):
         return np.ones(len(mu))*np.nan
     zMap = 1
@@ -358,6 +356,7 @@ def vector_cum_lensed_power_law(Eth,*params):
     gamma=params[2]
     zvals=params[4]
     beami = params[5]
+    surveyName = params[6]
     zD = 0.545
     #print(Eth, Emin, Emax, gamma)
     logEn = np.log(Emin)
@@ -371,7 +370,7 @@ def vector_cum_lensed_power_law(Eth,*params):
     result = np.zeros(Eth.shape)
     for i in range(len(zvals)):
         if zD < zvals[i]:
-            probGrid = lensingPDF(np.e**logMu, zD, zvals[i], beami)
+            probGrid = lensingPDF(np.e**logMu, zD, zvals[i], beami, surveyName)
             if np.sum(np.isnan(probGrid))==len(probGrid):
                 result[i,:]=vector_cum_power_law(Eth[i,:],*params)
             else:

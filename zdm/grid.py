@@ -297,7 +297,7 @@ class Grid:
                             * w
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
-                                self.zvals, i
+                                self.zvals, i, self.survey.name
                             )
                         )
                     else:
@@ -316,7 +316,7 @@ class Grid:
                             * w
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
-                                self.zvals, i
+                                self.zvals, i, self.survey.name
                             )
                         )
                     else:

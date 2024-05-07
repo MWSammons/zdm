@@ -67,17 +67,16 @@ def main():
     xMagni = np.meshgrid(np.arange(0,len(magni[:,0]),1), np.arange(0,len(magni[0,:]),1))
     tempCoords = proj.array_index_to_world_values(xMagni[0], xMagni[1])
     relBeamPositions = np.load('relBeamPos.npy')
-    surveyName = 'CHORD'
     ratesArr=np.zeros(len(relBeamPositions[:,0]))
     
     for i in range(len(relBeamPositions[:,0])):
         print('---Beam Pos:', i)
-        name = 'CHORD_BeamPos_'+str(i)
-        mux, pmux = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 10, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, name)
+        surveyName = 'CHORD_BeamPos_'+str(i)
+        mux, pmux = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 10, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, 'CHORD/'+surveyName)
         np.save('mux_BP_'+str(i), np.log10(mux))
         np.save('pmux_BP_'+str(i), pmux)
-        np.save('mus', np.log10(mux))
-        np.save('pmus', pmux)
+        np.save(str(surveyName)+'mus', np.log10(mux))
+        np.save(str(surveyName)+'pmus', pmux)
         del(pmux)
         del(mux)
         
@@ -93,13 +92,13 @@ def main():
         print("Rate of FRBs per day with z > 1.0 is ",FRB_rate_per_day)
      
         ratesArr[i] = FRB_rate_per_day
-        np.save('ratesArr', ratesArr)
+        np.save('CHORD/'+surveyName+'RatesArr', ratesArr)
 
         misc_functions.plot_grid_2(
                 g.rates,
                 g.zvals,
                 g.dmvals,
-                name=opdir + name + ".pdf",
+                name=opdir + surveyName + ".pdf",
                 norm=3,
                 log=True,
                 label="$\\log_{10} p({\\rm DM}_{\\rm EG},z)$  [a.u.]",
