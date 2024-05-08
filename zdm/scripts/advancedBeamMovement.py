@@ -71,10 +71,11 @@ def main():
     
     for i in range(len(relBeamPositions[:,0])):
         print('---Beam Pos:', i)
-        surveyName = 'CHORD_BeamPos_'+str(i)
-        mux, pmux = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 10, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, 'CHORD/'+surveyName)
-        np.save('mux_BP_'+str(i), np.log10(mux))
-        np.save('pmux_BP_'+str(i), pmux)
+        formatted_number = "{:02d}".format(i)
+        surveyName = 'CHORD_BeamPos_'+str(formatted_number)
+        mux, pmux = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 100, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, 'CHORD/'+surveyName)
+        np.save('mux_BP_'+str(formatted_number), np.log10(mux))
+        np.save('pmux_BP_'+str(formatted_number), pmux)
         np.save(str(surveyName)+'mus', np.log10(mux))
         np.save(str(surveyName)+'pmus', pmux)
         del(pmux)
@@ -83,7 +84,7 @@ def main():
         s,g = loading.survey_and_grid(survey_name=surveyName,
             NFRB=None,sdir=sdir,init_state=state)
     
-        np.save('ratesUnlensed_BP_'+str(i), g.rates)
+        np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         
         
         FRB_rate_per_day = np.sum(g.rates) * 10**g.state.FRBdemo.lC

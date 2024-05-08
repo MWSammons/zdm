@@ -114,6 +114,7 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
     overlay = ax.get_coords_overlay('icrs')
     overlay.grid(color='white', ls='dotted')
     fig.savefig(str(name))
+    plt.close()
     pmus = np.zeros([len(muThresh),len(log10b)])
     probMags = np.log10(muThresh[:-1])
     for i in range(len(log10b)):

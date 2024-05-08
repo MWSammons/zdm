@@ -75,6 +75,12 @@ def beamPositionInstance(i):
     np.save('pmux_BP_'+str(i), pmux)
     np.save(str(surveyName)+'mus', np.log10(mux))
     np.save(str(surveyName)+'pmus', pmux)
+    fig, ax = plt.subplots()
+    ax.plot(np.log10(mux), np.log10(pmux))
+    ax.set_xlabel('$\log_{10}\\mu$')
+    ax.set_ylabel('$\log_{10}p(\\mu)$')
+    fig.savefig('beamMagDist/probs'+format(i, '02d'))
+    plt.close()
     del(pmux)
     del(mux)
     
