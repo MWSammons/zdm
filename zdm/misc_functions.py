@@ -24,6 +24,7 @@ from zdm import survey
 from zdm import grid as zdm_grid
 from zdm import pcosmic
 from zdm import parameters
+import magnificationMapper
 
 
 def marginalise(
@@ -1912,6 +1913,7 @@ def initialise_grids(
     dmvals: np.ndarray,
     state: parameters.State,
     wdist=True,
+    cluster=False
 ):
     """ For a list of surveys, construct a zDMgrid object
     wdist indicates a distribution of widths in the survey,
@@ -1935,15 +1937,21 @@ def initialise_grids(
 
     # generates a DM mask
     # creates a mask of values in DM space to convolve with the DM grid
-    mask = pcosmic.get_dm_mask(
-        dmvals, (state.host.lmean, state.host.lsigma), zvals, plot=True
-    )
+    if cluster:
+        hostMask = pcosmic.get_dm_mask(
+            dmvals, (state.host.lmean, state.host.lsigma), zvals, plot=True
+        )
+        mask = pcosmic.get_cluster_dm_mask(hostMask, clusterFile, clusterRedshift)
+    else:
+        mask = pcosmic.get_dm_mask(
+            dmvals, (state.host.lmean, state.host.lsigma), zvals, plot=True
+        )
     grids = []
     for survey in surveys:
         print(f"Working on {survey.name}")
 
         grid = zdm_grid.Grid(
-            survey, copy.deepcopy(state), zDMgrid, zvals, dmvals, mask, wdist
+            survey, copy.deepcopy(state), zDMgrid, zvals, dmvals, mask, wdist, cluster
         )
         grids.append(grid)
 

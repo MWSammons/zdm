@@ -21,7 +21,9 @@ from astropy.cosmology import FlatLambdaCDM
 from frb.dm import igm
 from zdm import cosmology as cos
 from zdm import parameters
-
+from astropy.io import fits
+from astropy import wcs
+from astropy import units as u
 # from zdm import c_code
 
 import scipy as sp
@@ -275,6 +277,31 @@ def plot_mean(zvals, saveas, title="Mean DM"):
     plt.show()
     plt.close()
 
+def get_cluster_dm_mask(dmvals, mask, clusterFile, clusterRedshift, bPos):
+    info = fits.getheader(clusterFile)
+    proj = wcs.WCS(info)
+    DMs = fits.getdata(clusterFile)
+    DMThresh, pdms = magnificationMapper.clusterDMFuncAcrossBeam(
+        D = self.meta["DIAM"]*u.m, 
+        freq = self.meta["FBAR"]*u.MHz,
+        thresh = self.meta["BTHRESH"],
+        nbins = self.meta["NBINS"],
+        bPos = bPos,
+        proj = proj, 
+        DMs = DMs*1e6/(1+clusterRedshift), 
+        name = self.name
+    )
+    new_mask = np.zeros([mask.shape[0], mask.shape[1], self.meta["NBINS"]])
+    for i in range(self.meta["NBINS"]):
+        if np.sum(np.isnan(pdms[:,i]))==len(pdms[:,i]):
+            clusterConv = np.zeros(mask.shape[1])
+            clusterConv[0] = 1
+        else:
+            interpFunc = scipy.interpolate.interp1d(DMThresh, pdms[:,i], bounds_error=False, fill_value=0)
+            clusterConv = interpFunc(dmvals)
+        for j in range(mask.shape[0]):
+            new_mask[j,:,i] = np.convolve(mask[j,:],clusterConv/np.sum(clusterConv), mode='Full')[:mask.shape[1]]
+    return new_mask
 
 def get_dm_mask(dmvals, params, zvals=None, plot=False):
     """ Generates a mask over which to integrate the lognormal

@@ -95,7 +95,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
             state_dict=None, iFRB:int=0,
                alpha_method=1, NFRB:int=100, 
                lum_func:int=2,sdir=None,nz=500,ndm=1400,
-               nbins=5):
+               nbins=5, cluster=False):
     """ Load up a survey and grid for a CRACO mock dataset
 
     Args:
@@ -136,6 +136,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
         datdir=resource_filename('zdm', 'GridData'),
         zlog=False,nz=nz,ndm=ndm)
 
+
     ############## Initialise surveys ##############
     if sdir is not None:
         print("Searching for survey in directory ",sdir)
@@ -147,7 +148,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
     
     # generates zdm grid
     grids = misc_functions.initialise_grids(
-        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True)
+        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster)
     print("Initialised grid")
 
     # Return Survey and Grid

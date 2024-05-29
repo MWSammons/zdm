@@ -129,5 +129,60 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
 
 
 
+def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, DMThresh = np.arange(0,15000,100)):
+    FWHM = 1.22*(const.c/(freq))/D
+    beamSigma=(FWHM/2.)*(2*np.log(2))**-0.5
+    dlnb=-np.log(thresh)/nbins
+    log10min=np.log10(thresh)
+    dlog10b=log10min/nbins
+    log10b=(np.arange(nbins)+0.5)*dlog10b
+    OmegaB= (2*np.pi*dlnb*(beamSigma*180/np.pi*60)**2).decompose().value
+    pixRes = np.abs(np.diag(proj.pixel_scale_matrix*60))
+    xOrig = np.meshgrid(np.arange(DMs.shape[0]), np.arange(DMs.shape[1]))
+    x = np.meshgrid(np.arange(DMs.shape[0]), np.arange(DMs.shape[1]))
+    imageCoords = proj.array_index_to_world_values(x[0], x[1])
+    bGains = offSetBeamGains(bPos, imageCoords, beamSigma.decompose().value*180/np.pi)
+    fig = plt.figure()
+    ax = plt.subplot(111, projection=proj)
+    sizeDiff = int((len(xOrig[0][:,0])-len(x[0][:,0]))/2)
+    tower = np.zeros(bGains.shape)
+    for i in range(len(log10b)):
+        gainLevel = np.abs(np.log10(bGains)-log10b[i])<np.abs(dlog10b/2)
+        tower[gainLevel] = i
+    plt.imshow(tower, extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
+    ax.imshow((DMs).T, aspect='auto', extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], alpha=0.7)
+    ax.imshow(bGains, alpha=0.5,extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='Greys')
+        
+    plt.xlabel(r'RA')
+    plt.ylabel(r'Dec')
+    overlay = ax.get_coords_overlay('icrs')
+    overlay.grid(color='white', ls='dotted')
+    fig.savefig(str(name))
+    plt.close()
+    pdms = np.zeros([len(DMThresh),len(log10b)])
+    probMags = (DMThresh[:-1])
+    for i in range(len(log10b)):
+        print('beaming like crazy right now', i)
+        pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, pixRes, DMs, DMThresh)
+    return DMThresh, pdms
 
+def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, pixRes, DMs, DMThresh):
+    #OmegaB in arcminutes^2, same as pixRes
+    print(log10b, dlog10b)
+    inBeam = np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2)
+    if np.sum(inBeam)>0:
+        gtrDM = np.zeros(len(DMThresh))
+        for i in range(len(DMThresh)):
+            gtrDM[i] = np.sum(DMs[inBeam]>=DMThresh[i])
+
+        modelledArea = np.sum(np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
+        numUnmodelledCells = (OmegaB - modelledArea)/(pixRes[0]*pixRes[1])
+        print('num in beam', np.sum(inBeam))
+        gtrDM[0] = gtrDM[0]+numUnmodelledCells
+        probUN = (-1*np.diff((gtrDM))/np.diff(DMThresh))
+        #interpFunc = scipy.interpolate.interp1d((DMThresh[:-1]), probUN, bounds_error=False, fill_value=0)
+    else: 
+        #interpFunc = None
+        probUN = np.ones(len(DMThresh[:-1]))*np.nan
+    return probUN
 

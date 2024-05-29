@@ -82,7 +82,7 @@ def main():
         del(mux)
         
         s,g = loading.survey_and_grid(survey_name=surveyName,
-            NFRB=None,sdir=sdir,init_state=state)
+            NFRB=None,sdir=sdir,init_state=state, cluster=cluster)
     
         np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         

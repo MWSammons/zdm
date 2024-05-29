@@ -18,7 +18,7 @@ class Grid:
     It also assumes a linear uniform grid.
     """
 
-    def __init__(self, survey, state, zDMgrid, zvals, dmvals, smear_mask, wdist):
+    def __init__(self, survey, state, zDMgrid, zvals, dmvals, smear_mask, wdist, cluster):
         """
         Class constructor.
 
@@ -58,7 +58,7 @@ class Grid:
         #   THESE SHOULD BE THE SAME ORDER AS self.update()
         self.parse_grid(zDMgrid.copy(), zvals.copy(), dmvals.copy())
         self.calc_dV()
-        self.smear_dm(smear_mask.copy())
+        self.smear_dm(smear_mask.copy(), cluster)
         if wdist:
             efficiencies = survey.efficiencies  # two dimensions
             weights = survey.wplist
@@ -77,7 +77,7 @@ class Grid:
         # Calculate
         self.calc_pdv()
         self.set_evolution()  # sets star-formation rate scaling with z - here, no evoltion...
-        self.calc_rates()  # includes sfr smearing factors and pdv mult
+        self.calc_rates(cluster)  # includes sfr smearing factors and pdv mult
 
     def init_luminosity_functions(self):
         """ Set the luminsoity function for FRB energetics """
@@ -331,14 +331,16 @@ class Grid:
 
 
         # here, b-fractions are unweighted according to the value of b.
+        #here we sum over the fractions, for cluster per beam increment spread postpone this
         self.fractions = np.sum(
             self.b_fractions, axis=2
         )  # sums over b-axis [ we could ignore this step?]
         np.save('selffractionsLens', self.fractions)
+        #check algebraically if its ok to do this multiplication after cluster smearing
         self.pdv = np.multiply(self.fractions.T, self.dV).T
         print(np.sum(self.pdv),'+++++++')
 
-    def calc_rates(self):
+    def calc_rates(self, cluster):
         """ multiplies the rate per cell with the appropriate pdm plot """
 
         try:
@@ -359,8 +361,16 @@ class Grid:
             print("WARNING: no volumetric probability pdv yet calculated")
             exit()
 
-        self.sfr_smear = np.multiply(self.smear_grid.T, self.sfr).T
-        self.rates = self.pdv * self.sfr_smear
+        if cluster:
+            tempRates = np.zeros([self.grid.shape[0], self.grid.shape[1], len(self.beam_b)])
+            for i in range(len(self.beam_b)):
+                self.sfr_smear = np.multiply(self.smear_grid[:,:,i].T, self.sfr).T
+                tempRates[:,:,i] = self.b_fractions[:,:,i].T*self.dV*self.sfr_smear
+            self.rates = np.sum(tempRates,axis=2)
+        else:
+            self.sfr_smear = np.multiply(self.smear_grid.T, self.sfr).T
+            self.rates = self.pdv * self.sfr_smear
+        
 
     def calc_thresholds(self, F0:float, 
                         eff_table, 
@@ -418,7 +428,7 @@ class Grid:
         for i in np.arange(self.nthresh):
             self.thresholds[i,:,:] = np.outer(self.FtoE, Eff_thresh[i,:])
             
-    def smear_dm(self, smear:np.ndarray):  # ,mean:float,sigma:float):
+    def smear_dm(self, smear:np.ndarray, cluster):  # ,mean:float,sigma:float):
         """ Smears DM using the supplied array.
         Example use: DMX contribution
 
@@ -432,26 +442,43 @@ class Grid:
         ls = smear.size
         lz, ldm = self.grid.shape
 
-        if not hasattr(self, "smear_grid"):
-            self.smear_grid = np.zeros([lz, ldm])
-        self.smear = smear
+        if cluster:
+            self.smear_grid = np.zeros([lz, ldm, len(self.beam_b)])
+            for j in range(len(self.beam_b)):
+                for i in np.arange(lz):
+                    # we need to get the length of mode='same', BUT
+                    # we do not want it 'centred', hence must make cut on full
+                    if smear.ndim == 3:
+                        self.smear_grid[i, :, j] = np.convolve(
+                            self.grid[i, :], smear[i, :, j], mode="full"
+                        )[0:ldm]
+                    else:
+                        raise ValueError(
+                            "Wrong number of dimensions for cluster DM smearing ", smear.shape
+                        )
+            
 
-        # this method is O~7 times faster than the 'brute force' above for large arrays
-        for i in np.arange(lz):
-            # we need to get the length of mode='same', BUT
-            # we do not want it 'centred', hence must make cut on full
-            if smear.ndim == 1:
-                self.smear_grid[i, :] = np.convolve(
-                    self.grid[i, :], smear, mode="full"
-                )[0:ldm]
-            elif smear.ndim == 2:
-                self.smear_grid[i, :] = np.convolve(
-                    self.grid[i, :], smear[i, :], mode="full"
-                )[0:ldm]
-            else:
-                raise ValueError(
-                    "Wrong number of dimensions for DM smearing ", smear.shape
-                )
+        else:
+            if not hasattr(self, "smear_grid"):    #for cluster do n_beam incremement smearing arrays
+                self.smear_grid = np.zeros([lz, ldm])
+            self.smear = smear
+    
+            # this method is O~7 times faster than the 'brute force' above for large arrays
+            for i in np.arange(lz):
+                # we need to get the length of mode='same', BUT
+                # we do not want it 'centred', hence must make cut on full
+                if smear.ndim == 1:
+                    self.smear_grid[i, :] = np.convolve(
+                        self.grid[i, :], smear, mode="full"
+                    )[0:ldm]
+                elif smear.ndim == 2:
+                    self.smear_grid[i, :] = np.convolve(
+                        self.grid[i, :], smear[i, :], mode="full"
+                    )[0:ldm]
+                else:
+                    raise ValueError(
+                        "Wrong number of dimensions for DM smearing ", smear.shape
+                    )
 
     def get_p_zgdm(self, DMs: np.ndarray):
         """ Calcuates the probability of redshift given a DM
