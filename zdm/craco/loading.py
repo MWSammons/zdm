@@ -96,7 +96,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
                alpha_method=1, NFRB:int=100, 
                lum_func:int=2,sdir=None,nz=500,ndm=1400,
                nbins=5, cluster=False, clusterFile='',clusterRedshift=np.nan, 
-                bPos = np.array([[0],[0]])):
+                bPos = np.array([[0,0]])):
     """ Load up a survey and grid for a CRACO mock dataset
 
     Args:

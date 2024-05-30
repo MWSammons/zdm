@@ -1913,10 +1913,10 @@ def initialise_grids(
     dmvals: np.ndarray,
     state: parameters.State,
     wdist=True,
-    cluster=False
-    clusterFile = ''
+    cluster=False,
+    clusterFile = '',
     clusterRedshift = np.nan,
-    bPos=np.array([[0],[0]]),
+    bPos=np.array([[0,0]]),
 ):
     """ For a list of surveys, construct a zDMgrid object
     wdist indicates a distribution of widths in the survey,
@@ -1944,7 +1944,6 @@ def initialise_grids(
         hostMask = pcosmic.get_dm_mask(
             dmvals, (state.host.lmean, state.host.lsigma), zvals, plot=True
         )
-        mask = pcosmic.get_cluster_dm_mask(dmvals, zvals, hostMask, clusterFile, clusterRedshift, bPos)
     else:
         mask = pcosmic.get_dm_mask(
             dmvals, (state.host.lmean, state.host.lsigma), zvals, plot=True
@@ -1952,6 +1951,8 @@ def initialise_grids(
     grids = []
     for survey in surveys:
         print(f"Working on {survey.name}")
+        if cluster:
+            mask = pcosmic.get_cluster_dm_mask(survey, dmvals, zvals, hostMask, clusterFile, clusterRedshift, bPos)
 
         grid = zdm_grid.Grid(
             survey, copy.deepcopy(state), zDMgrid, zvals, dmvals, mask, wdist, cluster

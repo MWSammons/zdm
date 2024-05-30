@@ -24,6 +24,7 @@ from zdm import parameters
 from astropy.io import fits
 from astropy import wcs
 from astropy import units as u
+import magnificationMapper
 # from zdm import c_code
 
 import scipy as sp
@@ -277,19 +278,19 @@ def plot_mean(zvals, saveas, title="Mean DM"):
     plt.show()
     plt.close()
 
-def get_cluster_dm_mask(dmvals, zvals, mask, clusterFile, clusterRedshift, bPos):
+def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterFile, clusterRedshift, bPos):
     info = fits.getheader(clusterFile)
     proj = wcs.WCS(info)
     DMs = fits.getdata(clusterFile)
     DMThresh, pdms = magnificationMapper.clusterDMFuncAcrossBeam(
-        D = self.meta["DIAM"]*u.m, 
-        freq = self.meta["FBAR"]*u.MHz,
-        thresh = self.meta["BTHRESH"],
-        nbins = self.meta["NBINS"],
+        D = survey.meta["DIAM"]*u.m, 
+        freq = survey.meta["FBAR"]*u.MHz,
+        thresh = survey.meta["BTHRESH"],
+        nbins = survey.meta["NBINS"],
         bPos = bPos,
         proj = proj, 
         DMs = DMs*1e6/(1+clusterRedshift), 
-        name = self.name
+        name = survey.name
     )
     new_mask = np.zeros([mask.shape[0], mask.shape[1], self.meta["NBINS"]])
     for i in range(self.meta["NBINS"]):

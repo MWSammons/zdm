@@ -72,10 +72,12 @@ def main():
     dms = fits.getdata(clusterFile)
     infoDM = fits.getheader(clusterFile)
     projDM = wcs.WCS(infoDM)
-
-    relBeamPositions = np.load('relBeamPos.npy') #relative to magni
+    cluster=True
+    
+    #relBeamPositions = np.load('relBeamPos.npy') #relative to magni
+    relBeamPositions = np.array([[0,0]])
     ratesArr=np.zeros(len(relBeamPositions[:,0]))
-
+    
     
     for i in range(len(relBeamPositions[:,0])):
         print('---Beam Pos:', i)
@@ -92,7 +94,7 @@ def main():
         s,g = loading.survey_and_grid(survey_name=surveyName,
             NFRB=None,sdir=sdir,init_state=state, cluster=cluster, 
             clusterFile=clusterFile, clusterRedshift=clusterRedshift,
-            np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), projDM)
+            bPos=np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]))
     
         np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         
