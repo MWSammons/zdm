@@ -277,7 +277,7 @@ def plot_mean(zvals, saveas, title="Mean DM"):
     plt.show()
     plt.close()
 
-def get_cluster_dm_mask(dmvals, mask, clusterFile, clusterRedshift, bPos):
+def get_cluster_dm_mask(dmvals, zvals, mask, clusterFile, clusterRedshift, bPos):
     info = fits.getheader(clusterFile)
     proj = wcs.WCS(info)
     DMs = fits.getdata(clusterFile)
@@ -293,14 +293,16 @@ def get_cluster_dm_mask(dmvals, mask, clusterFile, clusterRedshift, bPos):
     )
     new_mask = np.zeros([mask.shape[0], mask.shape[1], self.meta["NBINS"]])
     for i in range(self.meta["NBINS"]):
-        if np.sum(np.isnan(pdms[:,i]))==len(pdms[:,i]):
-            clusterConv = np.zeros(mask.shape[1])
-            clusterConv[0] = 1
-        else:
-            interpFunc = scipy.interpolate.interp1d(DMThresh, pdms[:,i], bounds_error=False, fill_value=0)
-            clusterConv = interpFunc(dmvals)
         for j in range(mask.shape[0]):
-            new_mask[j,:,i] = np.convolve(mask[j,:],clusterConv/np.sum(clusterConv), mode='Full')[:mask.shape[1]]
+            if np.sum(np.isnan(pdms[:,i]))==len(pdms[:,i]):
+                new_mask[j,:,i] = mask[j,:]
+            else:
+                if zvals[j] >= clusterRedshift: 
+                    interpFunc = scipy.interpolate.interp1d(DMThresh, pdms[:,i], bounds_error=False, fill_value=0)
+                    clusterConv = interpFunc(dmvals)
+                    new_mask[j,:,i] = np.convolve(mask[j,:],clusterConv/np.sum(clusterConv), mode='Full')[:mask.shape[1]]
+                else:
+                    new_mask[j,:,i] = mask[j,:]
     return new_mask
 
 def get_dm_mask(dmvals, params, zvals=None, plot=False):

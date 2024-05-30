@@ -60,14 +60,22 @@ def main():
     state.FRBdemo.lC = 4.86
     state.energy.luminosity_function=4
 
+    clusterFile = 'Thermo_MACSJ0717_N.fits'
+    clusterRedshift = 0.545
+
     magni = fits.getdata('hlsp_frontier_model_macs0717_bradac_v1_z01-magnif.fits')
     info = fits.getheader('hlsp_frontier_model_macs0717_bradac_v1_z01-magnif.fits')
     proj = wcs.WCS(info)
-
     xMagni = np.meshgrid(np.arange(0,len(magni[:,0]),1), np.arange(0,len(magni[0,:]),1))
     tempCoords = proj.array_index_to_world_values(xMagni[0], xMagni[1])
-    relBeamPositions = np.load('relBeamPos.npy')
+
+    dms = fits.getdata(clusterFile)
+    infoDM = fits.getheader(clusterFile)
+    projDM = wcs.WCS(infoDM)
+
+    relBeamPositions = np.load('relBeamPos.npy') #relative to magni
     ratesArr=np.zeros(len(relBeamPositions[:,0]))
+
     
     for i in range(len(relBeamPositions[:,0])):
         print('---Beam Pos:', i)
@@ -82,7 +90,9 @@ def main():
         del(mux)
         
         s,g = loading.survey_and_grid(survey_name=surveyName,
-            NFRB=None,sdir=sdir,init_state=state, cluster=cluster)
+            NFRB=None,sdir=sdir,init_state=state, cluster=cluster, 
+            clusterFile=clusterFile, clusterRedshift=clusterRedshift,
+            np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), projDM)
     
         np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         
