@@ -25,6 +25,7 @@ from astropy.io import fits
 from astropy import wcs
 from astropy import units as u
 import magnificationMapper
+import scipy
 # from zdm import c_code
 
 import scipy as sp
@@ -292,14 +293,14 @@ def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterFile, clusterRedshif
         DMs = DMs*1e6/(1+clusterRedshift), 
         name = survey.name
     )
-    new_mask = np.zeros([mask.shape[0], mask.shape[1], self.meta["NBINS"]])
-    for i in range(self.meta["NBINS"]):
+    new_mask = np.zeros([mask.shape[0], mask.shape[1], survey.meta["NBINS"]])
+    for i in range(survey.meta["NBINS"]):
         for j in range(mask.shape[0]):
             if np.sum(np.isnan(pdms[:,i]))==len(pdms[:,i]):
                 new_mask[j,:,i] = mask[j,:]
             else:
                 if zvals[j] >= clusterRedshift: 
-                    interpFunc = scipy.interpolate.interp1d(DMThresh, pdms[:,i], bounds_error=False, fill_value=0)
+                    interpFunc = scipy.interpolate.interp1d(DMThresh[:-1], pdms[:,i], bounds_error=False, fill_value=0)
                     clusterConv = interpFunc(dmvals)
                     new_mask[j,:,i] = np.convolve(mask[j,:],clusterConv/np.sum(clusterConv), mode='Full')[:mask.shape[1]]
                 else:

@@ -365,7 +365,7 @@ class Grid:
             tempRates = np.zeros([self.grid.shape[0], self.grid.shape[1], len(self.beam_b)])
             for i in range(len(self.beam_b)):
                 self.sfr_smear = np.multiply(self.smear_grid[:,:,i].T, self.sfr).T
-                tempRates[:,:,i] = self.b_fractions[:,:,i].T*self.dV*self.sfr_smear
+                tempRates[:,:,i] = (self.b_fractions[:,:,i].T*self.dV).T*self.sfr_smear
             self.rates = np.sum(tempRates,axis=2)
         else:
             self.sfr_smear = np.multiply(self.smear_grid.T, self.sfr).T

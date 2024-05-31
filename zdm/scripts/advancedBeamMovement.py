@@ -58,7 +58,7 @@ def main():
     state.host.lsigma = 0.57
     state.host.lmean = 2.22
     state.FRBdemo.lC = 4.86
-    state.energy.luminosity_function=4
+    state.energy.luminosity_function=0
 
     clusterFile = 'Thermo_MACSJ0717_N.fits'
     clusterRedshift = 0.545

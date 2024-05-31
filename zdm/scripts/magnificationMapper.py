@@ -159,7 +159,7 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, DMThr
     overlay.grid(color='white', ls='dotted')
     fig.savefig(str(name))
     plt.close()
-    pdms = np.zeros([len(DMThresh),len(log10b)])
+    pdms = np.zeros([len(DMThresh[:-1]),len(log10b)])
     probMags = (DMThresh[:-1])
     for i in range(len(log10b)):
         print('beaming like crazy right now', i)
