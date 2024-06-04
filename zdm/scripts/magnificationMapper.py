@@ -178,6 +178,7 @@ def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, pixRes, DMs, DMThres
         modelledArea = np.sum(np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
         numUnmodelledCells = (OmegaB - modelledArea)/(pixRes[0]*pixRes[1])
         print('num in beam', np.sum(inBeam))
+        print('fraction modelled', np.sum(inBeam)/numUnmodelledCells)
         gtrDM[0] = gtrDM[0]+numUnmodelledCells
         probUN = (-1*np.diff((gtrDM))/np.diff(DMThresh))
         #interpFunc = scipy.interpolate.interp1d((DMThresh[:-1]), probUN, bounds_error=False, fill_value=0)
