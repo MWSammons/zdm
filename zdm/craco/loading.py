@@ -95,8 +95,10 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
             state_dict=None, iFRB:int=0,
                alpha_method=1, NFRB:int=100, 
                lum_func:int=2,sdir=None,nz=500,ndm=1400,
-               nbins=5, cluster=False, clusterFile='',clusterRedshift=np.nan, 
-                bPos = np.array([[0,0]])):
+               nbins=5, cluster=False, clusterDMFile='',
+               clusterRedshift=np.nan, bPos = np.array([[0,0]]), 
+               lensing=False, rawWeights = np.nan, weightsProj = np.nan,
+               xWeights = np.nan):
     """ Load up a survey and grid for a CRACO mock dataset
 
     Args:
@@ -149,7 +151,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
     
     # generates zdm grid
     grids = misc_functions.initialise_grids(
-        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, clusterFile=clusterFile, clusterRedshift = clusterRedshift, bPos = bPos)
+        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, lensing=lensing, clusterDMFile=clusterDMFile, clusterMagniFile=clusterMagniFile, clusterRedshift = clusterRedshift, bPos = bPos, gamma=state.energy.gamma)
     print("Initialised grid")
 
     # Return Survey and Grid

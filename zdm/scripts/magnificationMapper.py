@@ -85,7 +85,6 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
     pixRes = np.abs(np.diag(proj.pixel_scale_matrix*60))
     dataEdge = np.mean(np.concatenate((magni[:,0], magni[:,-1], magni[0,:], magni[-1,:])))
     count = 0
-    xOrig = np.meshgrid(np.arange(magni.shape[0]), np.arange(magni.shape[1]))
     x = np.meshgrid(np.arange(magni.shape[0]), np.arange(magni.shape[1]))
     tempMagni = magni.copy()
     while (dataEdge -1) > 0.1:                                        # couldnt find anything so do this downsampling so just do it yourself
@@ -100,14 +99,13 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
     bGains = offSetBeamGains(bPos, imageCoords, beamSigma.decompose().value*180/np.pi)
     fig = plt.figure()
     ax = plt.subplot(111, projection=proj)
-    sizeDiff = int((len(xOrig[0][:,0])-len(x[0][:,0]))/2)
     tower = np.zeros(bGains.shape)
     for i in range(len(log10b)):
         gainLevel = np.abs(np.log10(bGains)-log10b[i])<np.abs(dlog10b/2)
         tower[gainLevel] = i
-    plt.imshow(tower, extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
-    ax.imshow(np.log10(magni).T, aspect='auto', extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], alpha=0.7)
-    ax.imshow(bGains, alpha=0.5,extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='Greys')
+    plt.imshow(tower, extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
+    ax.imshow(np.log10(magni).T, aspect='auto', extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], alpha=0.7)
+    ax.imshow(bGains, alpha=0.5,extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='Greys')
         
     plt.xlabel(r'RA')
     plt.ylabel(r'Dec')
@@ -125,11 +123,11 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
             pmus[:,i] = ((1/(np.nansum(10**muTwo*interpFunc(muTwo))*np.diff(muTwo)[0]*np.log(10))*interpFunc(np.log10(muThresh))))
         else: 
             pmus[:,i] = np.nan
-    return muThresh, pmus
+    return muThresh, pmus, magni, imageCoords
 
 
 
-def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, DMThresh = np.arange(0,15000,100)):
+def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensing, rawWeights, weightsProj, xWeights, DMThresh = np.arange(0,15000,100)):
     FWHM = 1.22*(const.c/(freq))/D
     beamSigma=(FWHM/2.)*(2*np.log(2))**-0.5
     dlnb=-np.log(thresh)/nbins
@@ -138,20 +136,23 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, DMThr
     log10b=(np.arange(nbins)+0.5)*dlog10b
     OmegaB= (2*np.pi*dlnb*(beamSigma*180/np.pi*60)**2).decompose().value
     pixRes = np.abs(np.diag(proj.pixel_scale_matrix*60))
-    xOrig = np.meshgrid(np.arange(DMs.shape[0]), np.arange(DMs.shape[1]))
     x = np.meshgrid(np.arange(DMs.shape[0]), np.arange(DMs.shape[1]))
     imageCoords = proj.array_index_to_world_values(x[0], x[1])
     bGains = offSetBeamGains(bPos, imageCoords, beamSigma.decompose().value*180/np.pi)
+    if lensing:
+        weightCoords = weightsProj.array_index_to_world_values(xWeights[0], xWeights[1])
+        bGainsWeights = offSetBeamGains(bPos, weightCoords, beamSigma.decompose().value*180/np.pi)
+        pixResWeights = np.abs(np.diag(proj.pixel_scale_matrix*60))
+
     fig = plt.figure()
     ax = plt.subplot(111, projection=proj)
-    sizeDiff = int((len(xOrig[0][:,0])-len(x[0][:,0]))/2)
     tower = np.zeros(bGains.shape)
     for i in range(len(log10b)):
         gainLevel = np.abs(np.log10(bGains)-log10b[i])<np.abs(dlog10b/2)
         tower[gainLevel] = i
-    plt.imshow(tower, extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
-    ax.imshow((DMs).T, aspect='auto', extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], alpha=0.7)
-    ax.imshow(bGains, alpha=0.5,extent=[-sizeDiff,len(xOrig[0][:,0])+sizeDiff,-sizeDiff,len(xOrig[0][0,:])+sizeDiff], cmap='Greys')
+    plt.imshow(tower, extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
+    ax.imshow((DMs).T, aspect='auto', extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], alpha=0.7)
+    ax.imshow(bGains, alpha=0.5,extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='Greys')
         
     plt.xlabel(r'RA')
     plt.ylabel(r'Dec')
@@ -163,23 +164,69 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, DMThr
     probMags = (DMThresh[:-1])
     for i in range(len(log10b)):
         print('beaming like crazy right now', i)
-        pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, pixRes, DMs, DMThresh)
+        if lensing:
+            downSampleFactor = (pixRes/pixResWeights)
+            print('downSampleFactor:', downSampleFactor)
+            weightsFunc = regridInterpolator(rawWeights, weighCoords, downSampleFactor[0])
+            pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixResWeights, DMs, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights)
+        else:
+            weightsFunc = lambda x: np.nan
+            pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixRes, DMs, DMThresh, lensing, weightsFunc, np.nan, np.nan, np.nan)
+
     return DMThresh, pdms
 
-def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, pixRes, DMs, DMThresh):
+def regridInterpolator(weights, weightCoords, downSampleFactor):
+    #assuming a regular grid for map
+    if int(downSampleFactor)==0:
+        print('WARNING DM grid finer than magni grid')
+        return False
+    if int(downSampleFactor)==downSampleFactor:
+        smoothingKernel1D = np.ones(int(downSampleFactor))
+    else:
+        smoothinKernel1D = np.zeros(int(downSampleFactor)+2)
+        smoothinKernel1D[1:-1] = 1
+        smoothingKernel1D[0] = (downSampleFactor % int(downSampleFactor))/2
+        smoothingKernel1D[-1] = (downSampleFactor % int(downSampleFactor))/2
+    temp = np.repeat(np.expand_dims(smoothingKernel1D,axis=1),len(smoothKernel1D),axis=1)
+    smoothingKernel = temp*temp.T
+    smoothedWeights = scipt.signal.fftconvolve(weights, smoothingKernel, mode='same')
+    interpFunc = scipy.interpolate.RegularGridInterpolator((weightCoords[0][:,0], weightCoord[1][0,:]), weights)
+    return interpFunc 
+    
+
+def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes, DMs, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights):
     #OmegaB in arcminutes^2, same as pixRes
     print(log10b, dlog10b)
     inBeam = np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2)
+    imageRA = imageCoords[0][:,0]
+    imageDec = imageCoords[1][0,:]
+    imageStep = np.diff(imageRA)[0]    
+
+    if lensing:
+        inBeam_2 = np.abs(np.log10(bGainsWeights)-log10b)<np.abs(dlog10b/2)
+        weights = weightsFunc((imageRA,imageDec))
+        DMLessWeights = np.sum(rawWeights*(inBeam_2)*(weightCoords[0]>np.amax(imageRA))*(weightCoords[1]>np.amax(imageDec))*(weightCoords[0]<np.amin(imageRA))*(weightCoords[1]<np.amin(imageDec)))
+    else:
+        weights = 1.0
+    
+    
+
     if np.sum(inBeam)>0:
         gtrDM = np.zeros(len(DMThresh))
         for i in range(len(DMThresh)):
-            gtrDM[i] = np.sum(DMs[inBeam]>=DMThresh[i])
+            gtrDM[i] = np.sum((DMs[inBeam]>=DMThresh[i])*weights)
 
-        modelledArea = np.sum(np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
+        if lensing:
+            modelledArea = np.sum(np.abs(np.log10(bGainsWeights)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
+        else:
+            modelledArea = np.sum(np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
+               
+ 
         numUnmodelledCells = (OmegaB - modelledArea)/(pixRes[0]*pixRes[1])
+                
         print('num in beam', np.sum(inBeam))
         print('fraction modelled', np.sum(inBeam)/numUnmodelledCells)
-        gtrDM[0] = gtrDM[0]+numUnmodelledCells
+        gtrDM[0] = gtrDM[0]+numUnmodelledCells+DMLessWeights
         probUN = (-1*np.diff((gtrDM))/np.diff(DMThresh))
         #interpFunc = scipy.interpolate.interp1d((DMThresh[:-1]), probUN, bounds_error=False, fill_value=0)
     else: 

@@ -60,7 +60,7 @@ def main():
     state.FRBdemo.lC = 4.86
     state.energy.luminosity_function=0
 
-    clusterFile = 'Thermo_MACSJ0717_N.fits'
+    clusterDMFile = 'Thermo_MACSJ0717_N.fits'
     clusterRedshift = 0.545
 
     magni = fits.getdata('hlsp_frontier_model_macs0717_bradac_v1_z01-magnif.fits')
@@ -83,18 +83,21 @@ def main():
         print('---Beam Pos:', i)
         formatted_number = "{:02d}".format(i)
         surveyName = 'CHORD_BeamPos_'+str(formatted_number)
-        mux, pmux = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 100, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, 'CHORD/'+surveyName)
+        mux, pmux, wideMagni, wideX = normalisedLensFuncsAcrossBeam(48*u.m, 900*u.MHz, 1e-3, 100, np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), proj, magni, 'CHORD/'+surveyName)
+        rawWeights = 1/wideMagni*(1/wideMagni)**(state.energy.gamma)
         np.save('mux_BP_'+str(formatted_number), np.log10(mux))
         np.save('pmux_BP_'+str(formatted_number), pmux)
         np.save(str(surveyName)+'mus', np.log10(mux))
         np.save(str(surveyName)+'pmus', pmux)
         del(pmux)
         del(mux)
-        
+
+
         s,g = loading.survey_and_grid(survey_name=surveyName,
             NFRB=None,sdir=sdir,init_state=state, cluster=cluster, 
-            clusterFile=clusterFile, clusterRedshift=clusterRedshift,
-            bPos=np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]))
+            clusterDMFile=clusterDMFile, clusterRedshift=clusterRedshift, 
+            bPos=np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), 
+            lensing=True, rawWeights=rawWeights, weightsProj=proj, xWeights=xWide)
     
         np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         

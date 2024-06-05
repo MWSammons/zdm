@@ -279,19 +279,24 @@ def plot_mean(zvals, saveas, title="Mean DM"):
     plt.show()
     plt.close()
 
-def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterFile, clusterRedshift, bPos):
-    info = fits.getheader(clusterFile)
-    proj = wcs.WCS(info)
-    DMs = fits.getdata(clusterFile)
+def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterDMFile, clusterRedshift, bPos, lensing, rawWeights, weightsProj, xWeights):
+    infoDM = fits.getheader(clusterDMFile)
+    projDM = wcs.WCS(infoDM)
+    DMs = fits.getdata(clusterDMFile)
+
     DMThresh, pdms = magnificationMapper.clusterDMFuncAcrossBeam(
         D = survey.meta["DIAM"]*u.m, 
         freq = survey.meta["FBAR"]*u.MHz,
         thresh = survey.meta["BTHRESH"],
         nbins = survey.meta["NBINS"],
         bPos = bPos,
-        proj = proj, 
+        proj = projDM, 
         DMs = DMs*1e6/(1+clusterRedshift), 
-        name = survey.name
+        name = survey.name,
+        lensing = lensing,
+        rawWeights = rawWeights,
+        weightsProj = weightsProj,
+        xWeights = xWeights
     )
     new_mask = np.zeros([mask.shape[0], mask.shape[1], survey.meta["NBINS"]])
     for i in range(survey.meta["NBINS"]):
