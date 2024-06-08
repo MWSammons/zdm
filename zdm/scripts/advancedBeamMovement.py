@@ -58,9 +58,10 @@ def main():
     state.host.lsigma = 0.57
     state.host.lmean = 2.22
     state.FRBdemo.lC = 4.86
-    state.energy.luminosity_function=0
+    state.energy.luminosity_function=4
 
     clusterDMFile = 'Thermo_MACSJ0717_N.fits'
+    #clusterDMFile = 'allOnes.fits'
     clusterRedshift = 0.545
 
     magni = fits.getdata('hlsp_frontier_model_macs0717_bradac_v1_z01-magnif.fits')
@@ -69,10 +70,11 @@ def main():
     xMagni = np.meshgrid(np.arange(0,len(magni[:,0]),1), np.arange(0,len(magni[0,:]),1))
     tempCoords = proj.array_index_to_world_values(xMagni[0], xMagni[1])
 
-    dms = fits.getdata(clusterFile)
-    infoDM = fits.getheader(clusterFile)
+    dms = fits.getdata(clusterDMFile)
+    infoDM = fits.getheader(clusterDMFile)
     projDM = wcs.WCS(infoDM)
     cluster=True
+    lensing =True
     
     #relBeamPositions = np.load('relBeamPos.npy') #relative to magni
     relBeamPositions = np.array([[0,0]])
@@ -97,7 +99,7 @@ def main():
             NFRB=None,sdir=sdir,init_state=state, cluster=cluster, 
             clusterDMFile=clusterDMFile, clusterRedshift=clusterRedshift, 
             bPos=np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), 
-            lensing=True, rawWeights=rawWeights, weightsProj=proj, xWeights=xWide)
+            lensing=lensing, rawWeights=rawWeights, weightsProj=proj, xWeights=wideX)
     
         np.save('ratesUnlensed_BP_'+str(formatted_number), g.rates)
         

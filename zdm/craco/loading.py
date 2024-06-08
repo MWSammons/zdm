@@ -151,7 +151,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
     
     # generates zdm grid
     grids = misc_functions.initialise_grids(
-        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, lensing=lensing, clusterDMFile=clusterDMFile, clusterMagniFile=clusterMagniFile, clusterRedshift = clusterRedshift, bPos = bPos, gamma=state.energy.gamma)
+        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, clusterDMFile=clusterDMFile, clusterRedshift = clusterRedshift, bPos = bPos, lensing=lensing, rawWeights=rawWeights, weightsProj=weightsProj, xWeights=xWeights)
     print("Initialised grid")
 
     # Return Survey and Grid

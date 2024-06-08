@@ -123,7 +123,7 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
             pmus[:,i] = ((1/(np.nansum(10**muTwo*interpFunc(muTwo))*np.diff(muTwo)[0]*np.log(10))*interpFunc(np.log10(muThresh))))
         else: 
             pmus[:,i] = np.nan
-    return muThresh, pmus, magni, imageCoords
+    return muThresh, pmus, magni, x
 
 
 
@@ -142,7 +142,12 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensi
     if lensing:
         weightCoords = weightsProj.array_index_to_world_values(xWeights[0], xWeights[1])
         bGainsWeights = offSetBeamGains(bPos, weightCoords, beamSigma.decompose().value*180/np.pi)
-        pixResWeights = np.abs(np.diag(proj.pixel_scale_matrix*60))
+        pixResWeights = np.abs(np.diag(weightsProj.pixel_scale_matrix*60))
+        downSampleFactor = (pixRes/pixResWeights)
+        print('downSampleFactor:', downSampleFactor)
+        weightsFunc = regridInterpolator(rawWeights, weightCoords, downSampleFactor[0])
+    else:
+        weightsFunc = lambda x: np.nan
 
     fig = plt.figure()
     ax = plt.subplot(111, projection=proj)
@@ -165,14 +170,12 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensi
     for i in range(len(log10b)):
         print('beaming like crazy right now', i)
         if lensing:
-            downSampleFactor = (pixRes/pixResWeights)
-            print('downSampleFactor:', downSampleFactor)
-            weightsFunc = regridInterpolator(rawWeights, weighCoords, downSampleFactor[0])
             pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixResWeights, DMs, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights)
         else:
-            weightsFunc = lambda x: np.nan
             pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixRes, DMs, DMThresh, lensing, weightsFunc, np.nan, np.nan, np.nan)
 
+    np.save('temp',pdms)
+    np.save('temp2',DMThresh)
     return DMThresh, pdms
 
 def regridInterpolator(weights, weightCoords, downSampleFactor):
@@ -183,14 +186,17 @@ def regridInterpolator(weights, weightCoords, downSampleFactor):
     if int(downSampleFactor)==downSampleFactor:
         smoothingKernel1D = np.ones(int(downSampleFactor))
     else:
-        smoothinKernel1D = np.zeros(int(downSampleFactor)+2)
-        smoothinKernel1D[1:-1] = 1
+        smoothingKernel1D = np.zeros(int(downSampleFactor)+2)
+        smoothingKernel1D[1:-1] = 1
         smoothingKernel1D[0] = (downSampleFactor % int(downSampleFactor))/2
         smoothingKernel1D[-1] = (downSampleFactor % int(downSampleFactor))/2
-    temp = np.repeat(np.expand_dims(smoothingKernel1D,axis=1),len(smoothKernel1D),axis=1)
+    print('temp')
+    temp = np.repeat(np.expand_dims(smoothingKernel1D,axis=1),len(smoothingKernel1D),axis=1)
     smoothingKernel = temp*temp.T
-    smoothedWeights = scipt.signal.fftconvolve(weights, smoothingKernel, mode='same')
-    interpFunc = scipy.interpolate.RegularGridInterpolator((weightCoords[0][:,0], weightCoord[1][0,:]), weights)
+    smoothedWeights = scipy.signal.fftconvolve(weights, smoothingKernel, mode='same')
+    print('fft')
+    interpFunc = scipy.interpolate.RegularGridInterpolator((weightCoords[0][:,0], weightCoords[1][0,:]), smoothedWeights)
+    print('interp')
     return interpFunc 
     
 
@@ -208,13 +214,14 @@ def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes,
         DMLessWeights = np.sum(rawWeights*(inBeam_2)*(weightCoords[0]>np.amax(imageRA))*(weightCoords[1]>np.amax(imageDec))*(weightCoords[0]<np.amin(imageRA))*(weightCoords[1]<np.amin(imageDec)))
     else:
         weights = 1.0
+        DMLessWeights = 0
     
     
 
     if np.sum(inBeam)>0:
         gtrDM = np.zeros(len(DMThresh))
         for i in range(len(DMThresh)):
-            gtrDM[i] = np.sum((DMs[inBeam]>=DMThresh[i])*weights)
+            gtrDM[i] = np.sum(((DMs*inBeam)>=DMThresh[i])*weights)
 
         if lensing:
             modelledArea = np.sum(np.abs(np.log10(bGainsWeights)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
