@@ -58,7 +58,7 @@ def main():
     state.host.lsigma = 0.57
     state.host.lmean = 2.22
     state.FRBdemo.lC = 4.86
-    state.energy.luminosity_function=4
+    state.energy.luminosity_function=0
 
     clusterDMFile = 'Thermo_MACSJ0717_N.fits'
     #clusterDMFile = 'allOnes.fits'
@@ -74,7 +74,7 @@ def main():
     infoDM = fits.getheader(clusterDMFile)
     projDM = wcs.WCS(infoDM)
     cluster=True
-    lensing =True
+    lensing =False
     
     #relBeamPositions = np.load('relBeamPos.npy') #relative to magni
     relBeamPositions = np.array([[0,0]])
