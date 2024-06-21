@@ -279,25 +279,11 @@ def plot_mean(zvals, saveas, title="Mean DM"):
     plt.show()
     plt.close()
 
-def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterDMFile, clusterRedshift, bPos, lensing, rawWeights, weightsProj, xWeights):
-    infoDM = fits.getheader(clusterDMFile)
-    projDM = wcs.WCS(infoDM)
-    DMs = fits.getdata(clusterDMFile)
+def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterRedshift):
 
-    DMThresh, pdms = magnificationMapper.clusterDMFuncAcrossBeam(
-        D = survey.meta["DIAM"]*u.m, 
-        freq = survey.meta["FBAR"]*u.MHz,
-        thresh = survey.meta["BTHRESH"],
-        nbins = survey.meta["NBINS"],
-        bPos = bPos,
-        proj = projDM, 
-        DMs = DMs*1e6/(1+clusterRedshift), 
-        name = survey.name,
-        lensing = lensing,
-        rawWeights = rawWeights,
-        weightsProj = weightsProj,
-        xWeights = xWeights
-    )
+    DMThresh = np.load(survey.name+'DMThresh.npy')
+    pdms = np.load(survey.name+'DMThresh.npy')
+
     new_mask = np.zeros([mask.shape[0], mask.shape[1], survey.meta["NBINS"]])
     for i in range(survey.meta["NBINS"]):
         for j in range(mask.shape[0]):
@@ -310,7 +296,7 @@ def get_cluster_dm_mask(survey, dmvals, zvals, mask, clusterDMFile, clusterRedsh
                     new_mask[j,:,i] = np.convolve(mask[j,:],clusterConv/np.sum(clusterConv), mode='Full')[:mask.shape[1]]
                 else:
                     new_mask[j,:,i] = mask[j,:]
-    return new_mask
+    return new_mask 
 
 def get_dm_mask(dmvals, params, zvals=None, plot=False):
     """ Generates a mask over which to integrate the lognormal

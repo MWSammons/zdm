@@ -73,7 +73,7 @@ def main():
     dms = fits.getdata(clusterDMFile)
     infoDM = fits.getheader(clusterDMFile)
     projDM = wcs.WCS(infoDM)
-    cluster=True
+    cluster=False
     lensing =False
     
     #relBeamPositions = np.load('relBeamPos.npy') #relative to magni
@@ -97,7 +97,7 @@ def main():
 
         s,g = loading.survey_and_grid(survey_name=surveyName,
             NFRB=None,sdir=sdir,init_state=state, cluster=cluster, 
-            clusterDMFile=clusterDMFile, clusterRedshift=clusterRedshift, 
+            clusterNeFile=clusterDMFile, clusterRedshift=clusterRedshift, 
             bPos=np.array([np.mean(tempCoords[0])+relBeamPositions[i,0], np.mean(tempCoords[1])+relBeamPositions[i,1]]), 
             lensing=lensing, rawWeights=rawWeights, weightsProj=proj, xWeights=wideX)
     

@@ -95,7 +95,7 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
             state_dict=None, iFRB:int=0,
                alpha_method=1, NFRB:int=100, 
                lum_func:int=2,sdir=None,nz=500,ndm=1400,
-               nbins=5, cluster=False, clusterDMFile='',
+               nbins=5, cluster=False, clusterNeFile='',
                clusterRedshift=np.nan, bPos = np.array([[0,0]]), 
                lensing=False, rawWeights = np.nan, weightsProj = np.nan,
                xWeights = np.nan):
@@ -145,13 +145,28 @@ def survey_and_grid(survey_name:str='CRAFT/CRACO_1_5000',
         print("Searching for survey in directory ",sdir)
     else:
         sdir = os.path.join(resource_filename('zdm', 'craco'), 'MC_Surveys')
-    isurvey = survey.load_survey(survey_name, state, dmvals,
-                                 NFRB=NFRB, sdir=sdir, nbins=nbins,
-                                 iFRB=iFRB)
+    isurvey = survey.load_survey(
+                survey_name = survey_name,
+                state = state, 
+                dmvals = dmvals, 
+                bPos = bPos, 
+                cluster = cluster,
+                clusterNeFile = clusterNeFile, 
+                clusterRedshift = clusterRedshift, 
+                zvals = zvals, 
+                lensing = lensing, 
+                rawWeights = rawWeights, 
+                weightsProj = weightsProj, 
+                xWeights = xWeights,
+                NFRB=NFRB, 
+                sdir=sdir, 
+                nbins=nbins,
+                iFRB=iFRB
+    )
     
     # generates zdm grid
     grids = misc_functions.initialise_grids(
-        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, clusterDMFile=clusterDMFile, clusterRedshift = clusterRedshift, bPos = bPos, lensing=lensing, rawWeights=rawWeights, weightsProj=weightsProj, xWeights=xWeights)
+        [isurvey], zDMgrid, zvals, dmvals, state, wdist=True, cluster=cluster, clusterRedshift = clusterRedshift)
     print("Initialised grid")
 
     # Return Survey and Grid

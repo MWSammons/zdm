@@ -127,7 +127,8 @@ def normalisedLensFuncsAcrossBeam(D, freq, thresh, nbins, bPos, proj, magni, nam
 
 
 
-def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensing, rawWeights, weightsProj, xWeights, DMThresh = np.arange(0,15000,100)):
+def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, clusterRedshift, ne, name, lensing, rawWeights, weightsProj, xWeights, DMThresh = np.arange(0,15000,100), scatThresh = 10**np.arange(-3,3,0.01)):
+    # assumed that scatThresh is uniformly spaced in log10, if the base is otherwise need to revise integration step evaluations
     FWHM = 1.22*(const.c/(freq))/D
     beamSigma=(FWHM/2.)*(2*np.log(2))**-0.5
     dlnb=-np.log(thresh)/nbins
@@ -136,7 +137,7 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensi
     log10b=(np.arange(nbins)+0.5)*dlog10b
     OmegaB= (2*np.pi*dlnb*(beamSigma*180/np.pi*60)**2).decompose().value
     pixRes = np.abs(np.diag(proj.pixel_scale_matrix*60))
-    x = np.meshgrid(np.arange(DMs.shape[0]), np.arange(DMs.shape[1]))
+    x = np.meshgrid(np.arange(ne.shape[0]), np.arange(ne.shape[1]))
     imageCoords = proj.array_index_to_world_values(x[0], x[1])
     bGains = offSetBeamGains(bPos, imageCoords, beamSigma.decompose().value*180/np.pi)
     if lensing:
@@ -156,7 +157,7 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensi
         gainLevel = np.abs(np.log10(bGains)-log10b[i])<np.abs(dlog10b/2)
         tower[gainLevel] = i
     plt.imshow(tower, extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='tab10', vmin=0, vmax=(len(log10b)-1))
-    ax.imshow((DMs).T, aspect='auto', extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], alpha=0.7)
+    ax.imshow((ne*1e6/(1+clusterRedshift)).T, aspect='auto', extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], alpha=0.7)
     ax.imshow(bGains, alpha=0.5,extent=[0,len(x[0][:,0]),0,len(x[0][0,:])], cmap='Greys')
         
     plt.xlabel(r'RA')
@@ -166,17 +167,21 @@ def clusterDMFuncAcrossBeam(D, freq, thresh, nbins, bPos, proj, DMs, name, lensi
     fig.savefig(str(name))
     plt.close()
     pdms = np.zeros([len(DMThresh[:-1]),len(log10b)])
+    probScat = np.zeros([len(scatThresh[:-1]), len(zvals), len(log10b)])
     probMags = (DMThresh[:-1])
     for i in range(len(log10b)):
         print('beaming like crazy right now', i)
         if lensing:
-            pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixResWeights, DMs, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights)
+            pdms[:,i], probScat[:,:,i], fractionUnscattered = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixResWeights, clusterRedshift, zvals, scatThresh, ne, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights)
         else:
-            pdms[:,i] = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixRes, DMs, DMThresh, lensing, weightsFunc, np.nan, np.nan, np.nan)
+            pdms[:,i], probScat, fractionUnscattered = clusterDMFuncAtSubBeam(log10b[i], dlog10b, OmegaB, bGains, imageCoords, pixRes, clusterRedshift, zvals, scatThresh, ne, DMThresh, lensing, weightsFunc, np.nan, np.nan, np.nan)
 
-    np.save('temp',pdms)
-    np.save('temp2',DMThresh)
-    return DMThresh, pdms
+    xProbScat = scatThresh[:-1]*10**(np.diff(np.log10(scatThresh))[0]/2)
+
+    np.save(str(name)+'pdms',pdms)
+    np.save(str(name)+'DMThresh',DMThresh)
+   
+    return xProbScat, probScat, fractionUnscattered
 
 def regridInterpolator(weights, weightCoords, downSampleFactor):
     #assuming a regular grid for map
@@ -200,7 +205,7 @@ def regridInterpolator(weights, weightCoords, downSampleFactor):
     return interpFunc 
     
 
-def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes, DMs, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights):
+def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes, clusterRedshift, zvals, scatThresh, ne, DMThresh, lensing, weightsFunc, weightCoords, rawWeights, bGainsWeights):
     #OmegaB in arcminutes^2, same as pixRes
     print(log10b, dlog10b)
     inBeam = np.abs(np.log10(bGains)-log10b)<np.abs(dlog10b/2)
@@ -215,13 +220,25 @@ def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes,
     else:
         weights = 1.0
         DMLessWeights = 0
-    
+ 
     
 
     if np.sum(inBeam)>0:
         gtrDM = np.zeros(len(DMThresh))
+        gtrScat = np.zeros([len(ScatThresh),len(zvals)])
+        probScat = np.zeros([len(ScatThresh)-1, len(zvals)])
         for i in range(len(DMThresh)):
-            gtrDM[i] = np.sum(((DMs*inBeam)>=DMThresh[i])*weights)
+            gtrDM[i] = np.sum(((ne*1e6/(1+clusterRedshift)*inBeam)>=DMThresh[i])*weights)
+        for j in range(len(zvals)):
+            for i in range(len(scatThresh)):
+                scat = (4.1e-5/(1+clusterRedshift)*(lam/1)**4*((cosmo.angular_diameter_distance(0.545)*cosmo.angular_diameter_distance_z1z2(0.545,zvals[j])/cosmo.angular_diameter_distance(zvals[j])).value/1e3)*(8.4e-13*(ne/1e-4)**2*3.08567758e+22/((1+clusterRedshift)**2)/1e12)*(2.06264806e+08)**(1/3)*1e3)
+                print('Max Scat = ', np.amax(scat), ', Min Scat = ', np.amin(scat))
+                if(np.amin(scat)<np.amin(scatThresh)):
+                    print('WARNING: Scattering outside threshold')
+                    break
+                gtrScat[i,j] = np.sum((scat>=scatThresh[i])*weights)
+
+            probScat[:,j] = (-1*np.diff(gtrScat[:,j])/(gtrScat[0,j])/np.diff(np.log10(scatThresh)))
 
         if lensing:
             modelledArea = np.sum(np.abs(np.log10(bGainsWeights)-log10b)<np.abs(dlog10b/2))*(pixRes[0]*pixRes[1])
@@ -231,13 +248,17 @@ def clusterDMFuncAtSubBeam(log10b, dlog10b, OmegaB, bGains, imageCoords, pixRes,
  
         numUnmodelledCells = (OmegaB - modelledArea)/(pixRes[0]*pixRes[1])
                 
+        fractionUnscattered = (numUnmodelledCells+DMLessWeights)/(numUnmodelledCells+DMLessWeights+gtrScat[0,0])
         print('num in beam', np.sum(inBeam))
         print('fraction modelled', np.sum(inBeam)/numUnmodelledCells)
+        print('fraction unscattered', fractionUnscattered)
         gtrDM[0] = gtrDM[0]+numUnmodelledCells+DMLessWeights
         probUN = (-1*np.diff((gtrDM))/np.diff(DMThresh))
         #interpFunc = scipy.interpolate.interp1d((DMThresh[:-1]), probUN, bounds_error=False, fill_value=0)
     else: 
+        gtrScat = np.ones(len(scatThresh[:-1]))*np.nan
+        numUnmodelledCells = np.nan
         #interpFunc = None
         probUN = np.ones(len(DMThresh[:-1]))*np.nan
-    return probUN
+    return probUN, probScat, fractionUnscattered
 

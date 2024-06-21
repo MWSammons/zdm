@@ -282,52 +282,51 @@ class Grid:
             main_beam_b = np.log10(main_beam_b)
 
         for i, b in enumerate(main_beam_b):
-            for j, w in enumerate(self.eff_weights):
+            for j in range(len(self.eff_weights[:,i,0])):
                 # using log10 space conversion
                 if self.use_log10:
-                    thresh = new_thresh[j, :, :] - b
+                    thresh = new_thresh[j, i, :, :] - b
                 else:  # original
-                    thresh = self.thresholds[j, :, :] / b
+                    thresh = self.thresholds[j, i, :, :] / b
 
                 if j == 0:
                     if self.luminosity_function == 4:
                         print('we are doing the lensing!') 
                         self.b_fractions[:, :, i] = (
                             self.beam_o[i]
-                            * w
+                            * self.eff_weights[j,i,:]
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
                                 self.zvals, i, self.survey.name
-                            )
-                        )
+                            ).T
+                        ).T
                     else:
                         self.b_fractions[:, :, i] = (
                             self.beam_o[i]
-                            * w
+                            * selt.eff_weights[j,i,:]
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
-                            )
-                        )
+                            ).T
+                        ).T
                 else:
                     if self.luminosity_function == 4:
                         print('we are doing the lensing!') 
                         self.b_fractions[:, :, i] += (
                             self.beam_o[i]
-                            * w
+                            * self.eff_weights[j,i,:]
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10,
                                 self.zvals, i, self.survey.name
-                            )
-                        )
+                            ).T
+                        ).T
                     else:
                         self.b_fractions[:, :, i] += (
                             self.beam_o[i]
-                            * w
+                            * self.eff_weights[j,i,:]
                             * self.array_cum_lf(
                                 thresh, Emin, Emax, self.state.energy.gamma, self.use_log10
-                            )
-                    )
-                    np.save('thresh'+str(i)+str(j),thresh)
+                            ).T
+                    ).T
 
 
         # here, b-fractions are unweighted according to the value of b.
@@ -412,13 +411,13 @@ class Grid:
                 raise ValueError(
                     "For a multidimensional efficiency table, please set relative weights"
                 )
-            self.eff_weights = weights / np.sum(weights)  # normalises this!
+            self.eff_weights = weights / np.sum(weights,0)  # normalises this!
             self.eff_table = eff_table
         Eff_thresh = F0 / self.eff_table
 
         self.EF(self.state.energy.alpha, bandwidth)  # sets FtoE values - could have been done *WAY* earlier
 
-        self.thresholds = np.zeros([self.nthresh, self.zvals.size, self.dmvals.size])
+        self.thresholds = np.zeros([self.nthresh, sefl.b_beam.size, self.zvals.size, self.dmvals.size])
 
         # Performs an outer multiplication of conversion from fluence to energy.
         # The FtoE array has one value for each redshift.
@@ -426,7 +425,9 @@ class Grid:
         # FRB width (nthresh) and DM.
         # We loop over nthesh and generate a NDM x Nz array for each
         for i in np.arange(self.nthresh):
-            self.thresholds[i,:,:] = np.outer(self.FtoE, Eff_thresh[i,:])
+            for j in range(len(self.b_beam)):
+                #self.thresholds[i,j,:,:] = np.outer(self.FtoE, Eff_thresh[i,:])
+                self.thresholds[i,j,:,:] = (self.FtoE*(Eff_thresh[i,:,:,j])).T
             
     def smear_dm(self, smear:np.ndarray, cluster):  # ,mean:float,sigma:float):
         """ Smears DM using the supplied array.
