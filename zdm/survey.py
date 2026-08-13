@@ -524,7 +524,9 @@ class Survey:
             for j in range(len(zvals)):
                 formatted_redshift = "{:03.2f}".format(zvals[j]) 
                 probScat[:,j,:] = np.load(opdir+'probScat_BP_'+str(bPosNum)+str(formatted_redshift)+'.npy')
-                fractionUnscattered[j,:] = np.load(opdir+'fractionUnscattered_BP_'+str(bPosNum)+str(formatted_redshift)+'.npy') 
+                tempF = np.load(opdir+'fractionUnscattered_BP_'+str(bPosNum)+str(formatted_redshift)+'.npy') 
+                tempF[tempF<0]=0
+                fractionUnscattered[j,:] = tempF
         else:
             xProbScat=np.nan
             probScat = np.ones([1,len(zvals),len(self.beam_b)])*np.nan
@@ -901,6 +903,10 @@ def geometric_lognormals(lmu1,ls1,lmu2,ls2, xProbScat, probScat, fractionUnscatt
     x2s=np.random.normal(lmu2,ls2,Nrand)
     x3s=np.zeros(Nrand)
     if np.sum(probScat) > 0:
+        if probScat[0]<0:
+            probScat[0]=0
+        if np.sum(probScat)<1:
+            probScat[0] += 1-np.sum(probScat)
         if np.abs(np.sum(probScat)-1)>0:
             if np.abs(np.sum(probScat)-1)<1e-3:
                 probScat = probScat/np.sum(probScat)
